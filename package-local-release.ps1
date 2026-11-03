@@ -155,17 +155,17 @@ import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
-sys.path.insert(0, str(root / "engine"))
+sys.path.insert(0, str(root / 'engine'))
 import run_models
 
 result = {}
 for product, file_name in run_models.FILES.items():
-    session = run_models.make_session(root / "engine" / "models" / file_name, "cpu")
+    session = run_models.make_session(root / 'engine' / 'models' / file_name, 'cpu')
     result[product] = {
-        "file": file_name,
-        "providers": session.get_providers(),
-        "inputs": [item.name for item in session.get_inputs()],
-        "outputs": [item.name for item in session.get_outputs()],
+        'file': file_name,
+        'providers': session.get_providers(),
+        'inputs': [item.name for item in session.get_inputs()],
+        'outputs': [item.name for item in session.get_outputs()],
     }
 print(json.dumps(result, ensure_ascii=False))
 '@

@@ -1,0 +1,24 @@
+# Windows x64 / CPython 3.13.5. Only the DirectML variant of ORT is installed.
+numpy==2.1.3
+astropy==7.0.0
+tifffile==2025.2.18
+opencv-python-headless==4.12.0.88
+onnxruntime-directml==1.23.0
+PySide6-Essentials==6.9.3
+shiboken6==6.9.3
+xisf==0.9.7
+imagecodecs==2026.8.16
+lz4==4.4.5
+zstandard==0.25.0
+Pillow==11.1.0
+scipy==1.15.3
+pyerfa==2.0.1.5
+astropy-iers-data==0.2025.1.13.0.34.51
+PyYAML==6.0.2
+packaging==26.3
+coloredlogs==15.0.1
+humanfriendly==10.0
+flatbuffers==25.12.19
+protobuf==7.36.2
+sympy==1.14.0
+mpmath==1.3.0
