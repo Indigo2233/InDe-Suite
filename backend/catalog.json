@@ -1,0 +1,504 @@
+{
+  "products": [
+    {
+      "key": "conv",
+      "models": {
+        "0": {
+          "mlVersion": 5,
+          "modelFileBase": "InDeConv",
+          "normalization": "arcsinh,wp=1",
+          "reflectionPad": false,
+          "tile": {
+            "tileSize": 512,
+            "oversize": 2.0
+          },
+          "inputTensors": [
+            {
+              "name": "input",
+              "role": "image"
+            },
+            {
+              "name": "parameters",
+              "role": "params"
+            }
+          ],
+          "parameters": [
+            {
+              "name": "ss",
+              "longName": "sharpen-stars",
+              "sink": "model",
+              "sinkIndex": 0,
+              "visibility": "public",
+              "type": "float",
+              "default": 0.5,
+              "min": 0.0,
+              "max": 0.7,
+              "precision": 2,
+              "disabledIf": "lp",
+              "disabledValue": 0
+            },
+            {
+              "name": "ash",
+              "longName": "adjust-star-halos",
+              "legacyNames": [
+                "adjust-halos"
+              ],
+              "sink": "model",
+              "sinkIndex": 1,
+              "visibility": "public",
+              "type": "float",
+              "default": 0.0,
+              "min": -0.5,
+              "max": 0.5,
+              "precision": 2,
+              "disabledIf": "lp",
+              "disabledValue": 0
+            },
+            {
+              "name": "nsd",
+              "longName": "nonstellar-diameter",
+              "legacyNames": [
+                "nonstellar-psf-diameter"
+              ],
+              "sink": "model",
+              "sinkScale": 0.5,
+              "sinkIndex": 2,
+              "visibility": "public",
+              "type": "float",
+              "default": 0.0,
+              "min": 0.0,
+              "max": 8.0,
+              "precision": 1,
+              "disabledIf": "ansp && !lp",
+              "disabledValue": 0
+            },
+            {
+              "name": "ansp",
+              "longName": "auto-nonstellar-psf",
+              "legacyNames": [
+                "auto-nonstellar-radius"
+              ],
+              "sink": "model",
+              "sinkIndex": 3,
+              "visibility": "public",
+              "type": "bool",
+              "default": true,
+              "disabledIf": "lp",
+              "disabledValue": false
+            },
+            {
+              "name": "sn",
+              "longName": "sharpen-nonstellar",
+              "sink": "model",
+              "sinkIndex": 4,
+              "visibility": "public",
+              "type": "float",
+              "default": 0.5,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2
+            },
+            {
+              "name": "log10gain",
+              "sink": "model",
+              "sinkIndex": 5,
+              "visibility": "private",
+              "type": "float",
+              "default": 1.0,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Normalization Gain",
+              "description": "log10 of the gain of the applied normalization around zero"
+            },
+            {
+              "name": "lp",
+              "longName": "lunar-planetary",
+              "sink": "engine",
+              "visibility": "public",
+              "type": "bool",
+              "default": false,
+              "label": "Lunar/Planetary Mode",
+              "description": "Enable lunar/planetary mode",
+              "detailedDescriptionHtml": "<p>Enable Lunar/Planetary mode when processing lunar or planetary images with a large amount of empty background around the subject. Reminder: when processing images containing no stars, be sure to set the PSF Diameter to the approximate stellar FWHM that the same imaging system would produce if imaging stars.</p>"
+            }
+          ],
+          "groups": [
+            {
+              "name": "stellarGroup",
+              "label": "Stellar Adjustments",
+              "params": [
+                "ss",
+                "ash"
+              ]
+            },
+            {
+              "name": "nonstellarGroup",
+              "label": "Nonstellar Adjustments",
+              "params": [
+                "ansp",
+                "nsd",
+                "sn"
+              ]
+            },
+            {
+              "name": "optionsGroup",
+              "label": "Options",
+              "params": [
+                "lp"
+              ],
+              "modes": [
+                "correctOnlyMode"
+              ]
+            },
+            {
+              "name": "engineGroup",
+              "label": "Engine",
+              "params": [
+                "overlap"
+              ]
+            }
+          ],
+          "modes": [
+            {
+              "name": "correctOnlyMode",
+              "pins": {
+                "ss": 0,
+                "ash": 0,
+                "nsd": 0,
+                "ansp": true,
+                "sn": 0,
+                "lp": false
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "stars",
+      "models": {
+        "1": {
+          "mlVersion": 11,
+          "modelFileBase": "InDeStars",
+          "normalization": "mtf,tb=0.2,zc=1",
+          "reflectionPad": false,
+          "tile": {
+            "tileSize": 512,
+            "oversize": 1
+          },
+          "inputTensors": [
+            {
+              "name": "input_1",
+              "role": "image"
+            }
+          ],
+          "outputTensors": [
+            "Identity"
+          ],
+          "parameters": [
+            {
+              "name": "stars",
+              "longName": "output-stars",
+              "legacyNames": [
+                "stars"
+              ],
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "bool",
+              "default": false,
+              "hosts": [
+                "cli",
+                "pixinsight"
+              ],
+              "label": "Generate Star Image",
+              "description": "Also write a stars-only image (original minus starless) beside the starless output",
+              "detailedDescriptionHtml": "<p>Generates an image containing just the stars in addition to the starless image.</p>"
+            },
+            {
+              "name": "unscreen",
+              "longName": "unscreen",
+              "legacyNames": [
+                "unscreen-stars"
+              ],
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "bool",
+              "default": false,
+              "hosts": [
+                "cli",
+                "pixinsight"
+              ],
+              "disabledIf": "!stars",
+              "disabledValue": false,
+              "label": "Unscreen Stars",
+              "description": "Unscreen stars; requires Generate Star Image",
+              "detailedDescriptionHtml": "<p>Generates an &quot;unscreened&quot; stars-only image.</p><p>Unscreening is the inverse operation to the commonly-used &quot;screen&quot; blending operation. If a starless image will receive additional processing after star removal, unscreened stars can be &quot;re-screened&quot; onto this image with much better results than simply adding the stars-only image back to it.</p><p>Unscreening is not recommended for linear (unstretched) images.</p><p>With this setting unchecked, the stars-only image will be the simple arithmetic difference between the original and starless images, i.e., original - starless.</p><p>Stars can be re-screened onto a starless image using PixInsight's PixelMath:</p><p>~((~starless)*(~stars)),</p><p>where &quot;starless&quot; and &quot;stars&quot; are the names of the respective images. Photoshop's Screen blending mode performs the same operation.</p>"
+            }
+          ],
+          "groups": [
+            {
+              "name": "optionsGroup",
+              "label": "Options",
+              "params": [
+                "stars",
+                "unscreen"
+              ]
+            },
+            {
+              "name": "engineGroup",
+              "label": "Engine",
+              "params": [
+                "overlap"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "key": "noise",
+      "models": {
+        "0": {
+          "mlVersion": 3.1,
+          "modelFileBase": "InDeNoise",
+          "normalization": "mtf",
+          "reflectionPad": true,
+          "tile": {
+            "tileSize": 512,
+            "oversize": 1
+          },
+          "parameters": [
+            {
+              "name": "dn",
+              "longName": "denoise",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "detailedDescriptionHtml": "<p>Amount of noise to remove.</p><p>Intensity and color noise at all scales are reduced by the same amount. Enable intensity/color and/or frequency separation for independent control.</p>",
+              "visibleIf": "!csep && !fsep"
+            },
+            {
+              "name": "csep",
+              "longName": "enable-color-separation",
+              "sink": "gui",
+              "visibility": "json",
+              "type": "bool",
+              "default": false,
+              "guiOnly": true,
+              "label": "Intensity/Color Separation",
+              "description": "Process luminance and color independently",
+              "detailedDescriptionHtml": "<p>Enable separate intensity and color noise reduction controls. When disabled, intensity and color noise will be reduced by the same amount.</p>"
+            },
+            {
+              "name": "di",
+              "longName": "denoise-intensity",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise Intensity",
+              "description": "Intensity denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of intensity (luminance) noise to remove.</p>",
+              "visibleIf": "csep && !fsep"
+            },
+            {
+              "name": "dc",
+              "longName": "denoise-color",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise Color",
+              "description": "Chrominance denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of color (chrominance) noise to remove.</p>",
+              "visibleIf": "csep && !fsep"
+            },
+            {
+              "name": "fsep",
+              "longName": "enable-frequency-separation",
+              "sink": "gui",
+              "visibility": "json",
+              "type": "bool",
+              "default": false,
+              "guiOnly": true,
+              "label": "Frequency Separation",
+              "description": "Apply denoising in a frequency-separated manner",
+              "detailedDescriptionHtml": "<p>Enable separate high- and low-frequency noise reduction controls. When disabled, high- and low-frequency noise will be reduced by the same amount.</p>"
+            },
+            {
+              "name": "dhf",
+              "longName": "denoise-high-freq",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise HF",
+              "description": "High-frequency (small scale) denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of high-frequency (fine scale) noise to remove.</p>",
+              "visibleIf": "!csep && fsep"
+            },
+            {
+              "name": "dlf",
+              "longName": "denoise-low-freq",
+              "legacyNames": [
+                "denoise-lf"
+              ],
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise LF",
+              "description": "Low-frequency (large scale) denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of low-frequency (large scale) noise to remove.</p>",
+              "visibleIf": "!csep && fsep"
+            },
+            {
+              "name": "dihf",
+              "longName": "denoise-intensity-high-freq",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise HF Intensity",
+              "description": "High-frequency (small scale) intensity denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of high-frequency (fine scale) intensity noise to remove.</p>",
+              "visibleIf": "csep && fsep"
+            },
+            {
+              "name": "dilf",
+              "longName": "denoise-intensity-low-freq",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise LF Intensity",
+              "description": "Low-frequency (large scale) intensity denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of low-frequency (large scale) intensity noise to remove.</p>",
+              "visibleIf": "csep && fsep"
+            },
+            {
+              "name": "dchf",
+              "longName": "denoise-color-high-freq",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise HF Color",
+              "description": "High-frequency (small scale) color denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of high-frequency (fine scale) color noise to remove.</p>",
+              "visibleIf": "csep && fsep"
+            },
+            {
+              "name": "dclf",
+              "longName": "denoise-color-low-freq",
+              "legacyNames": [
+                "denoise-lf-color"
+              ],
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 0.9,
+              "min": 0.0,
+              "max": 1.0,
+              "precision": 2,
+              "label": "Denoise LF Color",
+              "description": "Low-frequency (large scale) color denoise strength",
+              "detailedDescriptionHtml": "<p>Amount of low-frequency (large scale) color noise to remove.</p>",
+              "visibleIf": "csep && fsep"
+            },
+            {
+              "name": "fs",
+              "longName": "frequency-scale",
+              "sink": "postprocess",
+              "visibility": "public",
+              "type": "float",
+              "default": 5.0,
+              "min": 1.0,
+              "max": 100.0,
+              "precision": 1,
+              "logarithmic": true,
+              "label": "HF/LF Scale",
+              "unit": "pixels",
+              "description": "Pixel scale of the low/high frequency transition band",
+              "detailedDescriptionHtml": "<p>The pixel scale that defines the transition between the low- and high-frequency regimes.</p>",
+              "visibleIf": "fsep"
+            },
+            {
+              "name": "it",
+              "longName": "iterations",
+              "sink": "engine",
+              "visibility": "public",
+              "type": "int",
+              "default": 2,
+              "min": 1,
+              "max": 5,
+              "label": "Iterations",
+              "description": "Number of denoising iterations to perform",
+              "detailedDescriptionHtml": "<p>Number of iterations of noise reduction. Larger values tend to increase preservation of faint details while also suppressing faint low-frequency (large-scale) noise, at the expense of longer execution time. Higher iterations tend to be most effective on very noisy images.</p>"
+            }
+          ],
+          "groups": [
+            {
+              "name": "optionsGroup",
+              "label": "Options",
+              "params": [
+                "csep",
+                "fsep"
+              ]
+            },
+            {
+              "name": "denoiseGroup",
+              "label": "Denoise",
+              "params": [
+                "dn",
+                "di",
+                "dc",
+                "dhf",
+                "dlf",
+                "dihf",
+                "dchf",
+                "dilf",
+                "dclf",
+                "fs",
+                "it"
+              ]
+            },
+            {
+              "name": "engineGroup",
+              "label": "Engine",
+              "params": [
+                "overlap"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

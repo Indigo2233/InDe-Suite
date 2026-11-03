@@ -1,0 +1,39 @@
+name: Repository safety
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject private keys, models, signatures, and binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          blocked="$(find . -type f \( \
+            -iname '*.xssk' -o \
+            -iname '*.xsgn' -o \
+            -iname '*.onnx' -o \
+            -iname '*.dll' -o \
+            -iname '*.dylib' -o \
+            -iname '*.so' -o \
+            -iname '*.exe' \
+          \) -print)"
+          if [[ -n "$blocked" ]]; then
+            echo "Blocked files were committed:"
+            echo "$blocked"
+            exit 1
+          fi
+      - name: Reject unexpectedly large files
+        shell: bash
+        run: |
+          set -euo pipefail
+          large="$(find . -type f -size +20M -print)"
+          if [[ -n "$large" ]]; then
+            echo "Files larger than 20 MiB were committed:"
+            echo "$large"
+            exit 1
+          fi
