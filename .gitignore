@@ -24,6 +24,7 @@
 /runtime/
 /engine/models/
 /backend/engine/models/
+/backend/runtime/
 
 __pycache__/
 *.pyc

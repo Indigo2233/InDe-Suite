@@ -2,6 +2,8 @@
 
 迁移前的双架构验证于 2026-10-29（UTC+8）完成。本仓库首次推送后需要在
 GitHub Actions 中重新运行 `macOS packages`，确认改名后的源码与打包流程。
+在 `v1.0.1-local` 发布经授权的 Windows 模型包之前，工作流会完成原生编译与
+运行时测试，但跳过 Mac 安装包生成。
 
 | 验证项目 | Apple Silicon arm64 | Intel x86_64 |
 | --- | --- | --- |

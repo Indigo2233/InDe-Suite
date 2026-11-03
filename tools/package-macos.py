@@ -14,7 +14,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_NAME = "InDe-1.0.1-local-windows-x64.zip"
 SOURCE_URL = "https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.1-local/" + SOURCE_NAME
-SOURCE_SHA = "af2033ceeb2105236a8a18861fd10422fdfbd7712dfb8a1bcb6201ad3d49e870"
+SOURCE_SHA = "fd44e1fdf8b1034f092aa613afd39c593c377b17598a23576e6a48c61878a226"
 PYTHON_SHA = {
     "arm64": "fbf4afef53c2a6b72bb741bc06d5671a9dfaf87bd84e5aa73ac9b3d0d589f14e",
     "x86_64": "a962e47df522889eaa7ff0d6a56203f1079f68aabb65ffdbe8455f362bc769f3",
