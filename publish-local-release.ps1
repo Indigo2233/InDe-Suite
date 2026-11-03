@@ -63,8 +63,15 @@ This release cannot be installed through Manage Repositories because the module 
 $notesFile = Join-Path ([IO.Path]::GetTempPath()) ('inde-release-notes-' + [guid]::NewGuid().ToString('N') + '.txt')
 try {
     [IO.File]::WriteAllText($notesFile, $notes, (New-Object Text.UTF8Encoding($false)))
-    & gh release view $ReleaseTag --repo $Repository *> $null
-    if ($LASTEXITCODE -eq 0) {
+    $releaseExists = $false
+    try {
+        & gh release view $ReleaseTag --repo $Repository 2>$null | Out-Null
+        $releaseExists = $LASTEXITCODE -eq 0
+    }
+    catch {
+        $releaseExists = $false
+    }
+    if ($releaseExists) {
         & gh release upload $ReleaseTag $archive $setupArchive $checksums --repo $Repository --clobber
         if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed; release notes were not changed.' }
         & gh release edit $ReleaseTag --repo $Repository --title "InDe-Suite $Version Local Signing Edition" --notes-file $notesFile
