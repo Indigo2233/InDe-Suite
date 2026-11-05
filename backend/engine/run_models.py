@@ -758,7 +758,7 @@ def _stars_rescale_to_unit(img):
 
 
 def run_stars_product(img, args):
-    """stars（StarXTerminator 11）：窗口 = 瓦片 = 512，无参数张量，两个输出（去星后 + 星点层）。"""
+    """星点模型：窗口与瓦片均为 512，无参数张量，输出去星图像和星点层。"""
     import onnxruntime as ort
     ort.set_default_logger_severity(3)
     print('[阶段] 载入模型…', flush=True)
