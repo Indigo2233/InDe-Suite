@@ -35,7 +35,7 @@ Mac 的 CPU 模型推理和安装包由 CI 检查；PixInsight 内的签名、�
 
 ### Windows：Local Signing Edition
 
-1. 下载[小型 Windows 安装入口](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.1-local/InDe-1.0.1-setup-windows.zip)。
+1. 下载[小型 Windows 安装入口](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local/InDe-1.0.2-setup-windows.zip)。
 2. 全部解压，双击 `Install-Windows.cmd`。
 3. 按向导选择 PixInsight 和自己的 `.xssk` 文件。首次使用会引导生成并注册本地身份。
 4. 保存图像并退出 PixInsight；向导自动下载、校验并安装完整包，在官方窗口输入签名密码。
@@ -50,8 +50,8 @@ Mac 的 CPU 模型推理和安装包由 CI 检查；PixInsight 内的签名、�
 勾选 `Make the local signing identity persistent`。
 完整的逐项填写说明、密码要求、路径示例见[安装说明](docs/INSTALL.zh-CN.md#首次生成-xssk按界面逐项填写)。
 
-离线使用：[下载完整包](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.1-local/InDe-1.0.1-local-windows-x64.zip)，
-依据 [SHA256SUMS-local.txt](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.1-local/SHA256SUMS-local.txt)
+离线使用：[下载完整包](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local/InDe-1.0.2-local-windows-x64.zip)，
+依据 [SHA256SUMS-local.txt](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local/SHA256SUMS-local.txt)
 校验后全部解压，双击相同入口。完整包内的向导使用本地文件。
 
 适合交给 Codex 或其他本地编程代理执行的完整规范位于 [AGENTS.md](AGENTS.md)，
@@ -115,8 +115,8 @@ GitHub Actions 的 `macOS packages` 工作流分别编译两种架构、打包�
 确认模型公开分发授权后执行：
 
 ```powershell
-.\package-local-release.ps1 -Version 1.0.1 -ModelDistributionAuthorized
-.\publish-local-release.ps1 -Version 1.0.1 -ConfirmPublicRelease
+.\package-local-release.ps1 -Version 1.0.2 -ModelDistributionAuthorized
+.\publish-local-release.ps1 -Version 1.0.2 -ConfirmPublicRelease
 ```
 
 发布包不包含 `.xsgn`，每位用户在本机运行 `install-local.ps1` 生成自己的签名。
@@ -133,7 +133,7 @@ GitHub Actions 的 `macOS packages` 工作流分别编译两种架构、打包�
 
 ```powershell
 .\package-release.ps1 `
-  -Version 1.0.1 `
+  -Version 1.0.2 `
   -SignaturePath "C:\path\InDe-pxm.xsgn" `
   -CpdSigned `
   -ModelDistributionAuthorized
@@ -144,7 +144,7 @@ GitHub Actions 的 `macOS packages` 工作流分别编译两种架构、打包�
 `CodeSign` 对 `updates.xri` 进行 XML 签名，提交并推送该文件，再发布 Release：
 
 ```powershell
-.\publish-release.ps1 -Version 1.0.1 -ConfirmPublicRelease
+.\publish-release.ps1 -Version 1.0.2 -ConfirmPublicRelease
 ```
 
 发行资产的下载地址写入 `updates.xri` 的 `serverURL`，模型文件不会进入 Git 历史。

@@ -8,8 +8,8 @@ Mac 用户请阅读独立的 [macOS 安装说明](INSTALL-macOS.zh-CN.md)，使�
 
 ## 推荐：双击安装向导
 
-1. 打开 [v1.0.1-local Release](https://github.com/Indigo2233/InDe-Suite/releases/tag/v1.0.1-local)。
-2. 下载小型安装入口 [InDe-1.0.1-setup-windows.zip](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.1-local/InDe-1.0.1-setup-windows.zip)。
+1. 打开 [v1.0.2-local Release](https://github.com/Indigo2233/InDe-Suite/releases/tag/v1.0.2-local)。
+2. 下载小型安装入口 [InDe-1.0.2-setup-windows.zip](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local/InDe-1.0.2-setup-windows.zip)。
 3. 将 ZIP **全部解压**到一个目录，双击其中的 `Install-Windows.cmd`。
 4. 向导自动查找 PixInsight；自定义安装路径会弹出文件窗口，请选择 `bin` 目录里的 `PixInsight.exe`。
 5. 首次安装，在签名身份问题中选择 `No`，按下方步骤生成并注册身份；已经完成的用户选择 `Yes`。
@@ -97,14 +97,14 @@ C:\Program Files\PixInsight\src\scripts\SigningKeys\SigningKeys.js
 
 ## 离线安装与命令行
 
-下载完整 `InDe-1.0.1-local-windows-x64.zip` 和 `SHA256SUMS-local.txt`，
+下载完整 `InDe-1.0.2-local-windows-x64.zip` 和 `SHA256SUMS-local.txt`，
 校验 ZIP 后全部解压，双击其中同名 `Install-Windows.cmd`。完整包内的向导直接使用本地文件，
 安装过程无需再下载模型。首次身份说明的在线链接可以用本地 `docs/INSTALL.zh-CN.md` 代替。
 
 校验文件同时列出小型安装入口与完整包。Windows PowerShell 校验完整包示例：
 
 ```powershell
-$name = 'InDe-1.0.1-local-windows-x64.zip'
+$name = 'InDe-1.0.2-local-windows-x64.zip'
 $line = @(Get-Content .\SHA256SUMS-local.txt | Where-Object { $_ -match ('\s+' + [regex]::Escape($name) + '$') })
 if ($line.Count -ne 1) { throw 'Missing or duplicate checksum' }
 $expected = ($line[0] -split '\s+')[0]

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^v\d+\.\d+\.\d+-local$')]
-    [string]$ReleaseTag = 'v1.0.1-local',
+    [string]$ReleaseTag = 'v1.0.2-local',
     [string]$PackageDirectory,
     [string]$PixInsightRoot,
     [string]$KeysFile,
