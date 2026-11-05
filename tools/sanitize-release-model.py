@@ -26,7 +26,13 @@ MODEL_NAMES = {
 
 FORBIDDEN = re.compile(
     r"(?:blurxterminator|starxterminator|"
-    r"noisexterminator|rc[ -]astro)",
+    r"noisexterminator|rc[ -]astro|"
+    r"rcroman|starx|nxt|bxt)",
+    re.IGNORECASE,
+)
+
+FORBIDDEN_PATH = re.compile(
+    r"(?:/users/|[a-z]:\\.*downloads|\.pb\b)",
     re.IGNORECASE,
 )
 
@@ -217,7 +223,7 @@ def forbidden_strings(model: ModelProto) -> list[str]:
                 values = value if field.is_repeated else (value,)
                 for item in values:
                     text = item.decode("utf-8", "replace") if isinstance(item, bytes) else item
-                    if FORBIDDEN.search(text):
+                    if FORBIDDEN.search(text) or FORBIDDEN_PATH.search(text):
                         hits.append(f"{field_path}: {text!r}")
             elif field.type == field.TYPE_MESSAGE:
                 if field.is_repeated:

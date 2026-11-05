@@ -165,6 +165,8 @@ Mac 包含 `InDe-pxm.dylib`、`InDeBackend/runtime/bin/python3`、三个模型�
 - 完整包包含 `package-manifest.json`；安装前验证逐文件 SHA-256。
 - 安装器变更运行 `test/installer-smoke.ps1` 和实际包的 `-CheckOnly`，兼容 Windows PowerShell 5.1。
 - Release 打包会使用 `tools/sanitize-release-model.py` 生成去标识化模型副本，保留输入输出接口和权重数值；打包机需要可导入 `onnx` 的 Python，可执行 `python -m pip install onnx` 准备环境。
+- 工作区模型 `backend/engine/models/*.onnx` 同样必须保持去标识化：模型域字段、图文档字符串、节点名和张量名均不得包含上游项目标识。
+  更换或导出模型后执行 `tools/sanitize-source-model.py` 就地清理，并核对 `backend/engine/run_models.py` 绑定的输入输出名未变。
 - 取得 CPD 身份后，使用 `package-release.ps1` 和 `publish-release.ps1`
   发布 Manage Repositories 版本。
 - macOS 使用 `build-macos.sh` 和 `tools/package-macos.py --model-distribution-authorized`；
