@@ -214,7 +214,7 @@ foreach ($installerFile in @('Install-Windows.cmd', 'setup-windows.ps1', 'instal
 # Remember the packaged version even if the source default changes later.
 $setupScriptPath = Join-Path $setupStageFull 'setup-windows.ps1'
 $setupScript = Get-Content -LiteralPath $setupScriptPath -Raw
-$setupScript.Replace("[string]`$ReleaseTag = 'v1.0.1-local'", "[string]`$ReleaseTag = 'v$Version-local'") |
+$setupScript.Replace("[string]`$ReleaseTag = 'v1.0.2-local'", "[string]`$ReleaseTag = 'v$Version-local'") |
     Set-Content -LiteralPath $setupScriptPath -Encoding ASCII
 Copy-Item -LiteralPath (Join-Path $moduleRoot 'docs\INSTALL.zh-CN.md') -Destination $setupStageFull -Force
 if (Test-Path -LiteralPath $setupArchive) { Remove-Item -LiteralPath $setupArchive -Force }

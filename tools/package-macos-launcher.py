@@ -6,7 +6,7 @@ import zipfile
 root = Path(__file__).resolve().parents[1]
 release = root / "release"
 release.mkdir(exist_ok=True)
-name = "InDe-1.0.1-setup-macos"
+name = "InDe-1.0.2-setup-macos"
 archive = release / (name + ".zip")
 with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as output:
     for relative in ("Install-macOS.command", "setup-macos.sh", "docs/INSTALL-macOS.zh-CN.md", "NOTICE.md"):

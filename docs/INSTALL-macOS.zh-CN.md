@@ -9,8 +9,8 @@ Apple Silicon 提供 arm64 包，Intel 提供 x86_64 包。最低 PixInsight 兼
 
 ## 推荐安装方法
 
-1. 在 [v1.0.1-local Release](https://github.com/Indigo2233/InDe-Suite/releases/tag/v1.0.1-local)
-   下载 `InDe-1.0.1-setup-macos.zip`，解压后双击 `Install-macOS.command`。
+1. 在 [v1.0.2-local Release](https://github.com/Indigo2233/InDe-Suite/releases/tag/v1.0.2-local)
+   下载 `InDe-1.0.2-setup-macos.zip`，解压后双击 `Install-macOS.command`。
 2. 首次使用先在 PixInsight 中创建并注册本地签名身份，具体步骤见下一节。
 3. 保存图像并退出 PixInsight。安装器查找 PixInsight.app，根据其可执行文件架构下载完整包，
    验证 SHA-256 和包内文件，随后让您选择 `.xssk`。
@@ -44,8 +44,8 @@ Apple Silicon 提供 arm64 包，Intel 提供 x86_64 包。最低 PixInsight 兼
 
 | PixInsight 运行架构 | 完整安装包 |
 | --- | --- |
-| Apple Silicon 原生 arm64 | `InDe-1.0.1-local-macos-arm64.tar.gz` |
-| Intel x86_64，或通过 Rosetta 运行的 Intel PixInsight | `InDe-1.0.1-local-macos-x86_64.tar.gz` |
+| Apple Silicon 原生 arm64 | `InDe-1.0.2-local-macos-arm64.tar.gz` |
+| Intel x86_64，或通过 Rosetta 运行的 Intel PixInsight | `InDe-1.0.2-local-macos-x86_64.tar.gz` |
 
 下载同架构的 `SHA256SUMS-macos-arm64.txt` 或 `SHA256SUMS-macos-x86_64.txt`，
 在下载目录中运行，例如：
@@ -71,7 +71,7 @@ bash setup-macos.sh \
 
 ```bash
 bash setup-macos.sh --check-only \
-  --package-directory /path/to/InDe-1.0.1-local-macos-arm64 \
+  --package-directory /path/to/InDe-1.0.2-local-macos-arm64 \
   --pixinsight-app /Applications/PixInsight/PixInsight.app
 ```
 

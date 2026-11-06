@@ -8,7 +8,7 @@ KEYS=""
 ARCH=""
 DESTINATION="$HOME/Library/Application Support/InDe"
 CHECK_ONLY=0
-BASE_URL=https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.1-local
+BASE_URL=https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local
 fail() { echo "ERROR: $*" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -53,7 +53,7 @@ if [[ ! -f "$PACKAGE/InDe-pxm.dylib" ]]; then
   [[ $CHECK_ONLY == 0 ]] || fail '--check-only 需要已解压的完整安装包。'
   CACHE="$HOME/Library/Caches/InDeInstaller"
   mkdir -p "$CACHE"
-  NAME="InDe-1.0.1-local-macos-$ARCH"
+  NAME="InDe-1.0.2-local-macos-$ARCH"
   SUMS="$CACHE/SHA256SUMS-macos-$ARCH.txt"
   curl --fail --location --retry 3 "$BASE_URL/SHA256SUMS-macos-$ARCH.txt" -o "$SUMS"
   EXPECTED="$(awk -v name="$NAME.tar.gz" '$2 == name {print $1}' "$SUMS")"

@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       confirm_public_release:
-        description: 'Publish the authorized models and Mac packages to v1.0.1-local'
+        description: 'Publish the authorized models and Mac packages to v1.0.2-local'
         required: true
         default: false
         type: boolean
@@ -58,10 +58,10 @@ jobs:
           sha256sum -c SHA256SUMS-setup-macos.txt
       - name: Upload only Mac assets
         run: |
-          gh release upload v1.0.1-local --clobber \
-            release/InDe-1.0.1-local-macos-arm64.tar.gz \
-            release/InDe-1.0.1-local-macos-x86_64.tar.gz \
-            release/InDe-1.0.1-setup-macos.zip \
+          gh release upload v1.0.2-local --clobber \
+            release/InDe-1.0.2-local-macos-arm64.tar.gz \
+            release/InDe-1.0.2-local-macos-x86_64.tar.gz \
+            release/InDe-1.0.2-setup-macos.zip \
             release/SHA256SUMS-macos-arm64.txt \
             release/SHA256SUMS-macos-x86_64.txt \
             release/SHA256SUMS-setup-macos.txt

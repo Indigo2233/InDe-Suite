@@ -49,12 +49,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v1.0.1-local/InDe-1.0.1-local-windows-x64.zip"
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v1.0.2-local/InDe-1.0.2-local-windows-x64.zip"
           if curl --fail --silent --show-error --location --head "$url" > /dev/null; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::The authorized v1.0.1-local Windows model package is not published yet; native build and provider tests completed without macOS packaging."
+            echo "::notice::The authorized v1.0.2-local Windows model package is not published yet; native build and provider tests completed without macOS packaging."
           fi
       - name: Package runtime and test all three models
         if: steps.source.outputs.available == 'true'
@@ -66,8 +66,8 @@ jobs:
           bash -n setup-macos.sh Install-macOS.command build-macos.sh
           target="$RUNNER_TEMP/InDe 安装测试"
           mkdir -p "$target"
-          tar -xzf "release/InDe-1.0.1-local-macos-$INDE_ARCH.tar.gz" -C "$target"
-          package="$target/InDe-1.0.1-local-macos-$INDE_ARCH"
+          tar -xzf "release/InDe-1.0.2-local-macos-$INDE_ARCH.tar.gz" -C "$target"
+          package="$target/InDe-1.0.2-local-macos-$INDE_ARCH"
           python="$package/InDeBackend/runtime/bin/python3"
           "$python" -I -B -c 'import numpy, cv2, onnxruntime; print(onnxruntime.get_available_providers())'
           # A Mach-O fixture exercises preflight without launching or signing PixInsight.

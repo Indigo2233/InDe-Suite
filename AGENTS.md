@@ -31,8 +31,8 @@ Mac 的 CI 模型/打包测试与真实 PixInsight 签名、加载、RTP 验证�
 1. 阅读 [docs/INSTALL-macOS.zh-CN.md](docs/INSTALL-macOS.zh-CN.md)。系统需 macOS 14+。
 2. 使用 `lipo -archs <PixInsight.app>/Contents/MacOS/PixInsight` 确认架构。
    arm64 与 x86_64 必须匹配 PixInsight；Rosetta 模式明确指定 `--arch x86_64`。
-3. 下载 `InDe-1.0.1-setup-macos.zip`，解压后运行 `Install-macOS.command`。
-   完整离线包为 `InDe-1.0.1-local-macos-<arch>.tar.gz`，使用同架构的
+3. 下载 `InDe-1.0.2-setup-macos.zip`，解压后运行 `Install-macOS.command`。
+   完整离线包为 `InDe-1.0.2-local-macos-<arch>.tar.gz`，使用同架构的
    `SHA256SUMS-macos-<arch>.txt` 校验。小型入口有独立 `SHA256SUMS-setup-macos.txt`。
 4. 初次使用通过官方 SigningKeys 创建并在 Local Signing Identity 中注册 `.xssk`。
    代理只传递私钥文件路径；用户亲自输入密码。
@@ -82,7 +82,7 @@ Mac 包含 `InDe-pxm.dylib`、`InDeBackend/runtime/bin/python3`、三个模型�
 
 ## 安装流程
 
-推荐用户下载 `InDe-1.0.1-setup-windows.zip`、全部解压并双击 `Install-Windows.cmd`。
+推荐用户下载 `InDe-1.0.2-setup-windows.zip`、全部解压并双击 `Install-Windows.cmd`。
 向导自动下载校验完整包、选择路径并调用安装器。完整离线包也包含同一个入口。
 逐项界面说明见 `docs/INSTALL.zh-CN.md`。本地身份创建、注册、密码输入和模块扫描
 仍需要用户操作；不得声称完全无人值守。

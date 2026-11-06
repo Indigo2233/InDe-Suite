@@ -59,7 +59,7 @@ Mac 的 CPU 模型推理和安装包由 CI 检查；PixInsight 内的签名、�
 
 ### macOS：Apple Silicon / Intel
 
-1. 下载[小型 Mac 安装入口](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.1-local/InDe-1.0.1-setup-macos.zip)。
+1. 下载[小型 Mac 安装入口](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local/InDe-1.0.2-setup-macos.zip)。
 2. 全部解压，双击 `Install-macOS.command`。安装器根据 PixInsight 的架构下载并校验完整包。
 3. 选择自己的 `.xssk`，在 PixInsight 官方窗口输入密码。
 4. 在 `Process > Modules > Install Modules` 中扫描 `~/Library/Application Support/InDe`，安装后重启。
