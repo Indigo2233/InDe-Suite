@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^v\d+\.\d+\.\d+-local$')]
-    [string]$ReleaseTag = 'v1.0.2-local',
+    [string]$ReleaseTag = 'v1.0.3-local',
     [string]$PackageDirectory,
     [string]$PixInsightRoot,
     [string]$KeysFile,
@@ -100,6 +100,30 @@ When ready, click OK to select the keys file.
     if ($KeysFile -match '[^\x00-\x7F]' -or [IO.Path]::GetExtension($KeysFile) -ine '.xssk') {
         throw 'Select a .xssk file whose full path contains ASCII characters only. See the installation guide.'
     }
+    $keysDocument = Test-InDeSigningKeysDocument $KeysFile
+    if (-not $keysDocument.Valid) {
+        throw "The selected signing keys file is not usable: $($keysDocument.Reason) Generate it again in PixInsight > Script > Development > SigningKeys."
+    }
+    $signingState = Get-InDePixInsightSigningState
+    if (-not $signingState.LicenseFound) {
+        throw 'No PixInsight license was found in %APPDATA%\Pleiades. Activate a PixInsight license first, then run setup again.'
+    }
+    if (-not $signingState.LocalSigningIdentityEnabled) {
+        throw 'PixInsight has the local signing identity disabled. Enable it in Process > Preferences > Security, then run setup again.'
+    }
+    if (-not $signingState.PersistentIdentity) {
+        $answer = Show-InDeMessage @'
+No persistent local signing identity was detected in PixInsight.
+
+Without it, the PixInsight command line signing call terminates with a
+fatal error and Windows shows only a crash dialog.
+
+Open PixInsight > Edit > Local Signing Identity, select your .xssk file,
+enter the password, enable "Make the local signing identity persistent",
+and confirm. Then click OK to continue.
+'@ 'YesNoCancel'
+        if ($answer -ne 'Yes') { exit 0 }
+    }
     while (Get-Process PixInsight -ErrorAction SilentlyContinue) {
         if ((Show-InDeMessage 'Save your work and close all PixInsight windows, then click Retry. Setup will not close them for you.' 'RetryCancel') -eq 'Cancel') { exit 0 }
     }
@@ -145,5 +169,10 @@ When ready, click OK to select the keys file.
 catch {
     Write-Host ("Setup stopped: " + $_.Exception.Message) -ForegroundColor Red
     Write-Host "Instructions: $guide"
+    [void][Windows.Forms.MessageBox]::Show(
+        $_.Exception.Message,
+        'InDe-Suite Setup',
+        [Windows.Forms.MessageBoxButtons]::OK,
+        [Windows.Forms.MessageBoxIcon]::Error)
     exit 1
 }

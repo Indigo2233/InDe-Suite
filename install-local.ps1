@@ -53,6 +53,10 @@ if ([IO.Path]::GetExtension($keysFullPath) -ine '.xssk') {
 if ($keysFullPath -match '[^\x00-\x7F]') {
     throw 'The .xssk path must contain ASCII characters only because the PixInsight Windows signing command cannot decode this path safely.'
 }
+$keysDocument = Test-InDeSigningKeysDocument $keysFullPath
+if (-not $keysDocument.Valid) {
+    throw "The signing keys file is not usable: $($keysDocument.Reason) Regenerate it in PixInsight > Script > Development > SigningKeys."
+}
 if (Get-Process PixInsight -ErrorAction SilentlyContinue) {
     throw 'PixInsight is running. Close every PixInsight window before local signing.'
 }
@@ -65,10 +69,23 @@ $signingParent = Join-Path $publicRoot 'InDeSigning'
 $signingDirectory = Join-Path $signingParent ([guid]::NewGuid().ToString('N'))
 $stageDll = Join-Path $signingDirectory 'InDe-pxm.dll'
 $stageSignature = Join-Path $signingDirectory 'InDe-pxm.xsgn'
+$signingOutLog = Join-Path $signingDirectory 'pixinsight-sign.out.log'
+$signingErrLog = Join-Path $signingDirectory 'pixinsight-sign.err.log'
 
 try {
     New-Item -ItemType Directory -Path $signingDirectory -Force | Out-Null
     Copy-Item -LiteralPath $sourceDll -Destination $stageDll -Force
+
+    $signingState = Get-InDePixInsightSigningState
+    if (-not $signingState.LicenseFound) {
+        throw 'PixInsight license data was not found in %APPDATA%\Pleiades. Activate a PixInsight license before installing InDe.'
+    }
+    if (-not $signingState.LocalSigningIdentityEnabled) {
+        throw 'PixInsight has the local signing identity disabled. Enable it in Process > Preferences > Security and run setup again.'
+    }
+    if (-not $signingState.PersistentIdentity) {
+        Write-Warning 'No persistent local signing identity was detected. Register your .xssk in PixInsight > Edit > Local Signing Identity and enable "Make the local signing identity persistent".'
+    }
 
     Write-Host 'PixInsight will request the Local Signing Identity password.'
     Write-Host 'Enter the password in the PixInsight dialog. The installer does not read or store it.'
@@ -77,12 +94,67 @@ try {
         "--sign-module-file=`"$stageDll`"",
         "--xssk-file=`"$keysFullPath`""
     )
-    $signingProcess = Start-Process -FilePath $pixInsightExe -ArgumentList $arguments -PassThru -Wait
-    if ($signingProcess.ExitCode -ne 0) {
-        throw "PixInsight signing failed with exit code $($signingProcess.ExitCode)."
+    # PixInsight reports command line signing failures on stderr and exits with
+    # code -1. Some failures only show a modal "Fatal Error" window and keep
+    # the process alive, so the window is watched and closed as well.
+    $signingProcess = Start-Process -FilePath $pixInsightExe -ArgumentList $arguments `
+        -RedirectStandardOutput $signingOutLog -RedirectStandardError $signingErrLog -PassThru
+    $fatalWindow = [IntPtr]::Zero
+    while (-not $signingProcess.HasExited) {
+        Start-Sleep -Milliseconds 500
+        if ($fatalWindow -ne [IntPtr]::Zero) { continue }
+        $candidate = Find-InDePixInsightFatalErrorWindow $signingProcess.Id
+        if ($candidate -ne [IntPtr]::Zero) {
+            $fatalWindow = $candidate
+            [void][InDeFatalWindowProbe]::Close($fatalWindow)
+        }
+    }
+    $signingProcess.WaitForExit()
+    $signingExitCode = $signingProcess.ExitCode
+    if ($null -eq $signingExitCode) { $signingExitCode = -1 }
+    $signingLogText = ''
+    foreach ($logPath in @($signingOutLog, $signingErrLog)) {
+        if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { continue }
+        $logText = (Get-Content -LiteralPath $logPath -Raw -ErrorAction SilentlyContinue)
+        if ([string]::IsNullOrWhiteSpace($logText)) { continue }
+        if ([string]::IsNullOrWhiteSpace($signingLogText)) {
+            $signingLogText = $logText
+        }
+        else {
+            $signingLogText = $signingLogText + "`n" + $logText
+        }
+        if ([string]::IsNullOrWhiteSpace($signingLogText)) { $signingLogText = '' }
+    }
+    if ($signingExitCode -ne 0) {
+        $logCopy = Copy-InDeDiagnosticLog $signingErrLog 'signing'
+        if (-not $logCopy) { $logCopy = Copy-InDeDiagnosticLog $signingOutLog 'signing' }
+        $detail = ''
+        if (-not [string]::IsNullOrWhiteSpace($signingLogText)) {
+            $detail = ($signingLogText -split '\r?\n' | Where-Object { $_.Trim() } | Select-Object -First 4) -join ' '
+        }
+        $crashed = ($signingExitCode -eq -1073740791) -or ($signingExitCode -eq -1073741819)
+        $summary = if ($crashed) {
+            "PixInsight crashed while signing the module (exit code $signingExitCode)."
+        }
+        elseif ($fatalWindow -ne [IntPtr]::Zero) {
+            "PixInsight reported a fatal error while signing the module and closed its error window."
+        }
+        elseif ([string]::IsNullOrWhiteSpace($detail)) {
+            "PixInsight signing did not complete. The signing password window was closed without signing the module."
+        }
+        else {
+            "PixInsight signing failed with exit code $signingExitCode."
+        }
+        if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'PixInsight produced no diagnostic output.' }
+        throw ("$summary $detail" +
+            "`nRegister a persistent local signing identity in PixInsight > Edit > Local Signing Identity, verify the .xssk password, and retry." +
+            $(if ($logCopy) { "`nDiagnostic log: $logCopy" } else { '' }))
     }
     if (-not (Test-Path -LiteralPath $stageSignature -PathType Leaf)) {
-        throw 'PixInsight did not generate InDe-pxm.xsgn.'
+        $logCopy = Copy-InDeDiagnosticLog $signingErrLog 'signing'
+        if (-not $logCopy) { $logCopy = Copy-InDeDiagnosticLog $signingOutLog 'signing' }
+        throw ("PixInsight did not generate InDe-pxm.xsgn." +
+            $(if ($logCopy) { "`nDiagnostic log: $logCopy" } else { '' }))
     }
 
     $sourceHash = (Get-FileHash -LiteralPath $sourceDll -Algorithm SHA256).Hash

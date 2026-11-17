@@ -113,3 +113,137 @@ function Get-InDePEMachine {
     }
     finally { $reader.Dispose() }
 }
+
+function Get-InDePixInsightSigningState {
+    # Reports the local state PixInsight needs before it can sign a module.
+    # Reads no .xssk content and no private key material.
+    param()
+    $applicationData = [Environment]::GetFolderPath('ApplicationData')
+    $pleiades = Join-Path $applicationData 'Pleiades'
+    $state = [pscustomobject]@{
+        SettingsDirectory = $pleiades
+        SettingsPath = ''
+        SettingsFound = $false
+        LicenseFound = $false
+        PersistentIdentity = $false
+        LocalSigningIdentityEnabled = $true
+    }
+    if (-not (Test-Path -LiteralPath $pleiades -PathType Container)) {
+        return $state
+    }
+    $settings = @(Get-ChildItem -LiteralPath $pleiades -Filter 'core-*-pxi.settings' -File -ErrorAction SilentlyContinue |
+        Sort-Object -Property Name)
+    if ($settings.Count -gt 0) {
+        $state.SettingsPath = $settings[0].FullName
+        $state.SettingsFound = $true
+    }
+    $state.LicenseFound = Test-Path -LiteralPath (Join-Path $pleiades 'PixInsightLicense') -PathType Leaf
+    if (-not $state.SettingsFound) {
+        return $state
+    }
+    try {
+        $settingsText = [IO.File]::ReadAllText($state.SettingsPath)
+    }
+    catch {
+        return $state
+    }
+    $publicKeyMatch = [regex]::Match($settingsText, '(?s)LocalSigningIdentity.{0,400}?PublicKey" t="s">([^<]*)')
+    if ($publicKeyMatch.Success -and -not [string]::IsNullOrWhiteSpace($publicKeyMatch.Groups[1].Value)) {
+        $state.PersistentIdentity = $true
+    }
+    $enabledMatch = [regex]::Match($settingsText, 'EnableLocalSigningIdentity" t="b" v="([^"]*)"')
+    if ($enabledMatch.Success -and $enabledMatch.Groups[1].Value -eq 'false') {
+        $state.LocalSigningIdentityEnabled = $false
+    }
+    return $state
+}
+
+function Copy-InDeDiagnosticLog {
+    # Keeps a copy of an installer log so a failed run can be inspected later.
+    param([string]$SourcePath, [string]$Label)
+    if ([string]::IsNullOrWhiteSpace($SourcePath) -or -not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) {
+        return ''
+    }
+    try {
+        $logDirectory = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'InDeInstaller\logs'
+        New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+        $stamp = (Get-Date).ToString('yyyyMMdd-HHmmss')
+        $destination = Join-Path $logDirectory ("inde-$Label-$stamp.log")
+        Copy-Item -LiteralPath $SourcePath -Destination $destination -Force
+        return $destination
+    }
+    catch {
+        return ''
+    }
+}
+
+function Test-InDeSigningKeysDocument {
+    # Checks that a .xssk file is present and has a plausible size.
+    # The file content is never read, parsed or reported: a .xssk holds the
+    # private key and must stay opaque to the installer. A truncated or
+    # corrupted keys file is reported by PixInsight on stderr, and the
+    # installer forwards that message.
+    param([string]$Path)
+    $result = [pscustomobject]@{
+        Valid = $false
+        Reason = ''
+    }
+    try {
+        $info = Get-Item -LiteralPath $Path
+    }
+    catch {
+        $result.Reason = 'The signing keys file could not be read.'
+        return $result
+    }
+    if ($info.Length -lt 512) {
+        $result.Reason = 'The signing keys file is too small to be a valid XSSK document.'
+        return $result
+    }
+    $result.Valid = $true
+    return $result
+}
+
+function Find-InDePixInsightFatalErrorWindow {
+    # Finds the PixInsight "Fatal Error" modal window of a given process.
+    # PixInsight shows this window for signing failures it cannot report on
+    # stderr, and it blocks the process until a user closes it.
+    param([int]$ProcessId)
+    if ($null -eq ('InDeFatalWindowProbe' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public class InDeFatalWindowProbe {
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc cb, IntPtr p);
+  public delegate bool EnumWindowsProc(IntPtr h, IntPtr p);
+  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+  public static IntPtr Find(int processId) {
+    IntPtr found = IntPtr.Zero;
+    EnumWindows(delegate(IntPtr h, IntPtr p) {
+      if (!IsWindowVisible(h)) return true;
+      uint owner;
+      GetWindowThreadProcessId(h, out owner);
+      if (owner != (uint)processId) return true;
+      StringBuilder title = new StringBuilder(256);
+      GetWindowText(h, title, 256);
+      string text = title.ToString();
+      if (text.IndexOf("Fatal Error", StringComparison.OrdinalIgnoreCase) >= 0) {
+        found = h;
+        return false;
+      }
+      return true;
+    }, IntPtr.Zero);
+    return found;
+  }
+  public static void Close(IntPtr h) {
+    PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero);
+  }
+}
+'@
+    }
+    return [InDeFatalWindowProbe]::Find($ProcessId)
+}
+

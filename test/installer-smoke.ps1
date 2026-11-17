@@ -80,6 +80,34 @@ try {
     [IO.File]::WriteAllText((Join-Path $unknown 'user-data.txt'), 'preserve')
     Expect-Failure { Assert-InDeDestination $unknown $package '' } 'nonempty'
     Expect-Failure { Get-InDePEMachine $tampered } 'Invalid Windows executable'
+
+    # Signing keys document validation: rejects files that make the PixInsight
+    # command line signing call terminate with a fatal error.
+    $keysDirectory = Join-Path $fixture 'keys'
+    New-Item -ItemType Directory -Path $keysDirectory -Force | Out-Null
+    $emptyKeys = Join-Path $keysDirectory 'empty.xssk'
+    [IO.File]::WriteAllText($emptyKeys, '')
+    $emptyResult = Test-InDeSigningKeysDocument $emptyKeys
+    if ($emptyResult.Valid) { throw 'An empty signing keys file must be rejected.' }
+    if ($emptyResult.Reason -notlike '*small*') { throw 'Unexpected reason for an empty signing keys file.' }
+
+    # A truncated keys file must be rejected before PixInsight is started.
+    $truncatedKeys = Join-Path $keysDirectory 'truncated.xssk'
+    [IO.File]::WriteAllText($truncatedKeys, '<xssk version="1.0"><KeyPair>')
+    $truncatedResult = Test-InDeSigningKeysDocument $truncatedKeys
+    if ($truncatedResult.Valid) { throw 'A truncated signing keys file must be rejected.' }
+
+    # The validator must never read the keys content.
+    $goodKeys = Join-Path $keysDirectory 'good.xssk'
+    [IO.File]::WriteAllText($goodKeys, ('x' * 2048))
+    $goodResult = Test-InDeSigningKeysDocument $goodKeys
+    if (-not $goodResult.Valid) { throw "A plausible signing keys file must be accepted: $($goodResult.Reason)" }
+
+    # The signing state probe must not fail when no PixInsight data exists.
+    $signingState = Get-InDePixInsightSigningState
+    if ($null -eq $signingState) { throw 'The signing state probe returned nothing.' }
+    if ($signingState.PSObject.Properties['PersistentIdentity'] -eq $null) { throw 'The signing state probe lacks the identity flag.' }
+
     Write-Host "Installer smoke tests passed (PowerShell $($PSVersionTable.PSVersion))."
 }
 finally {

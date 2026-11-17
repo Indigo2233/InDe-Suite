@@ -12,8 +12,8 @@ import urllib.request
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_NAME = "InDe-1.0.2-local-windows-x64.zip"
-SOURCE_URL = "https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local/" + SOURCE_NAME
+SOURCE_NAME = "InDe-1.0.3-local-windows-x64.zip"
+SOURCE_URL = "https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.3-local/" + SOURCE_NAME
 SOURCE_SHA = "0c5d078fdf8d8176a03479ad0d19a33656dd22131dfe326882327d6edabf1bbf"
 PYTHON_SHA = {
     "arm64": "fbf4afef53c2a6b72bb741bc06d5671a9dfaf87bd84e5aa73ac9b3d0d589f14e",
@@ -45,7 +45,7 @@ def main():
     if platform.system() != "Darwin" or platform.machine() not in PYTHON_SHA:
         raise RuntimeError("Package on a native arm64 or x86_64 Mac.")
     arch = platform.machine()
-    name = f"InDe-1.0.2-local-macos-{arch}"
+    name = f"InDe-1.0.3-local-macos-{arch}"
     release = ROOT / "release"
     release.mkdir(exist_ok=True)
     stage = release / name
@@ -116,7 +116,7 @@ def main():
     for source in (sdk / "src/3rdparty/RFC6234").iterdir():
         if source.suffix in (".c", ".h"):
             shutil.copy2(source, rfc_notices)
-    metadata = {"version": "1.0.2", "platform": "macos", "architecture": arch,
+    metadata = {"version": "1.0.3", "platform": "macos", "architecture": arch,
                 "minimumMacOS": "14.0", "pclCommit": "201860a364c05308cde8271f5ca517b69b487fa1",
                 "sourceCommit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                 "modelSourceSHA256": SOURCE_SHA, "pythonSourceSHA256": PYTHON_SHA[arch],

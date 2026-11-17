@@ -8,8 +8,8 @@ Mac 用户请阅读独立的 [macOS 安装说明](INSTALL-macOS.zh-CN.md)，使�
 
 ## 推荐：双击安装向导
 
-1. 打开 [v1.0.2-local Release](https://github.com/Indigo2233/InDe-Suite/releases/tag/v1.0.2-local)。
-2. 下载小型安装入口 [InDe-1.0.2-setup-windows.zip](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.2-local/InDe-1.0.2-setup-windows.zip)。
+1. 打开 [v1.0.3-local Release](https://github.com/Indigo2233/InDe-Suite/releases/tag/v1.0.3-local)。
+2. 下载小型安装入口 [InDe-1.0.3-setup-windows.zip](https://github.com/Indigo2233/InDe-Suite/releases/download/v1.0.3-local/InDe-1.0.3-setup-windows.zip)。
 3. 将 ZIP **全部解压**到一个目录，双击其中的 `Install-Windows.cmd`。
 4. 向导自动查找 PixInsight；自定义安装路径会弹出文件窗口，请选择 `bin` 目录里的 `PixInsight.exe`。
 5. 首次安装，在签名身份问题中选择 `No`，按下方步骤生成并注册身份；已经完成的用户选择 `Yes`。
@@ -97,14 +97,14 @@ C:\Program Files\PixInsight\src\scripts\SigningKeys\SigningKeys.js
 
 ## 离线安装与命令行
 
-下载完整 `InDe-1.0.2-local-windows-x64.zip` 和 `SHA256SUMS-local.txt`，
+下载完整 `InDe-1.0.3-local-windows-x64.zip` 和 `SHA256SUMS-local.txt`，
 校验 ZIP 后全部解压，双击其中同名 `Install-Windows.cmd`。完整包内的向导直接使用本地文件，
 安装过程无需再下载模型。首次身份说明的在线链接可以用本地 `docs/INSTALL.zh-CN.md` 代替。
 
 校验文件同时列出小型安装入口与完整包。Windows PowerShell 校验完整包示例：
 
 ```powershell
-$name = 'InDe-1.0.2-local-windows-x64.zip'
+$name = 'InDe-1.0.3-local-windows-x64.zip'
 $line = @(Get-Content .\SHA256SUMS-local.txt | Where-Object { $_ -match ('\s+' + [regex]::Escape($name) + '$') })
 if ($line.Count -ne 1) { throw 'Missing or duplicate checksum' }
 $expected = ($line[0] -split '\s+')[0]
@@ -163,6 +163,30 @@ macOS 中创建和注册 `.xssk` 的 PixInsight 菜单流程与上文相同。
 - **找不到 Process**：确认已在 Install Modules 中完成 Search 和 Install，然后重启。
 - **找不到后端**：确认安装目录中包含 `InDeBackend\engine\models`、`InDeBackend\runtime` 和 `InDeBackend\tools`。
 - **之前设置过 INDE_INSTALL_DIR**：该环境变量优先于模块同目录的后端；请确认它指向期望版本，修改后重启 PixInsight。
+
+## PixInsight 崩溃窗口「已停止工作」
+
+安装过程会启动一次 PixInsight 命令行签名。这一步失败时，PixInsight 会终止进程，
+Windows 可能只显示「PixInsight Core 已停止工作」的崩溃对话框，看不出真正原因。
+当前版本会捕获 PixInsight 的诊断输出，并把真实原因打印到安装窗口，同时保存到：
+
+```text
+%LOCALAPPDATA%\InDeInstaller\logs\inde-signing-<时间戳>.log
+```
+
+常见原因与处理方式：
+
+| 诊断信息 | 原因 | 处理 |
+| --- | --- | --- |
+| `No secure keys file has been specified` | 密钥路径未被正确传入 | 重新选择 `.xssk` 文件 |
+| `The specified file does not exist` | 密钥文件路径无效 | 确认文件仍然存在 |
+| `lacks required authentication data` | 密钥文件损坏或被截断 | 用 SigningKeys 重新生成 `.xssk` |
+| `wrong password or invalid public key data` | 密码错误 | 在 PixInsight 密码窗口重新输入 |
+| `Parsing signing keys file` | 密钥文件格式无效 | 用 SigningKeys 重新生成 `.xssk` |
+
+出现崩溃对话框时，请先查看安装窗口中的诊断信息。确认密码无误后重新运行安装向导即可。
+向导在开始签名前会检查三件事：PixInsight 许可证是否存在、本地签名身份是否被禁用、
+是否已注册持久本地签名身份。任一项不满足时，向导会直接给出对应提示。
 
 ## Manage Repositories
 
