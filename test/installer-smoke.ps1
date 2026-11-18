@@ -14,6 +14,27 @@ function Expect-Failure {
     if (-not $caught) { throw "Expected failure containing: $Expected" }
 }
 
+function New-SigningState {
+    param(
+        [bool]$PersistentIdentity,
+        [bool]$LocalSigningIdentityEnabled = $true,
+        [string[]]$PersistentSettingsPaths = @(),
+        [string[]]$DisabledSettingsPaths = @(),
+        [string[]]$SettingsPaths = @('first.settings')
+    )
+    if ($PersistentIdentity -and $PersistentSettingsPaths.Count -eq 0) {
+        $PersistentSettingsPaths = @($SettingsPaths[-1])
+    }
+    return [pscustomobject]@{
+        LicenseFound = $true
+        LocalSigningIdentityEnabled = $LocalSigningIdentityEnabled
+        PersistentIdentity = $PersistentIdentity
+        SettingsPaths = $SettingsPaths
+        PersistentSettingsPaths = $PersistentSettingsPaths
+        DisabledSettingsPaths = $DisabledSettingsPaths
+    }
+}
+
 # Parse all installer/packaging scripts with the actual interpreter running this test.
 foreach ($file in Get-ChildItem -LiteralPath $repository -Filter '*.ps1' -File) {
     $tokens = $null
@@ -103,10 +124,85 @@ try {
     $goodResult = Test-InDeSigningKeysDocument $goodKeys
     if (-not $goodResult.Valid) { throw "A plausible signing keys file must be accepted: $($goodResult.Reason)" }
 
+    $signatureText = @'
+<?xml version="1.0" encoding="UTF-8"?>
+<xsgn version="1.0" xmlns="http://www.pixinsight.com/xsgn">
+  <CreationTime>2026-11-18T12:00:00.000Z</CreationTime>
+  <Signature version="1.0" developerId="local-test">
+    <Timestamp>2026-11-18T12:00:00.000Z</Timestamp>
+    <CodeSignature encoding="Base64">ZGlzcG9zYWJsZQ==</CodeSignature>
+  </Signature>
+</xsgn>
+'@
+    $signaturePath = Join-Path $keysDirectory 'good.xsgn'
+    [IO.File]::WriteAllText($signaturePath, $signatureText)
+    $signatureResult = Test-InDeSignatureDocument $signaturePath
+    if (-not $signatureResult.Valid) { throw "A valid signature fixture must be accepted: $($signatureResult.Reason)" }
+    if ($signatureResult.DeveloperId -cne 'local-test') { throw 'The signature developer ID was not parsed.' }
+
+    $badSignaturePath = Join-Path $keysDirectory 'bad.xsgn'
+    [IO.File]::WriteAllText($badSignaturePath, $signatureText.Replace('ZGlzcG9zYWJsZQ==', 'not base64'))
+    $badSignatureResult = Test-InDeSignatureDocument $badSignaturePath
+    if ($badSignatureResult.Valid) { throw 'A signature with invalid Base64 must be rejected.' }
+
     # The signing state probe must not fail when no PixInsight data exists.
     $signingState = Get-InDePixInsightSigningState
     if ($null -eq $signingState) { throw 'The signing state probe returned nothing.' }
     if ($signingState.PSObject.Properties['PersistentIdentity'] -eq $null) { throw 'The signing state probe lacks the identity flag.' }
+
+    $validPrerequisites = New-SigningState -PersistentIdentity $true
+    Assert-InDeSigningPrerequisites $validPrerequisites
+    $multiVersionState = New-SigningState -PersistentIdentity $true `
+        -SettingsPaths @('old.settings', 'current.settings') `
+        -PersistentSettingsPaths @('current.settings') `
+        -DisabledSettingsPaths @('old.settings')
+    Assert-InDeSigningPrerequisites $multiVersionState
+    $allDisabledState = New-SigningState -PersistentIdentity $true `
+        -LocalSigningIdentityEnabled $false `
+        -SettingsPaths @('old.settings', 'current.settings') `
+        -PersistentSettingsPaths @('current.settings') `
+        -DisabledSettingsPaths @('old.settings', 'current.settings')
+    Expect-Failure { Assert-InDeSigningPrerequisites $allDisabledState } 'disabled'
+    $disabledWithoutIdentity = New-SigningState -PersistentIdentity $false `
+        -LocalSigningIdentityEnabled $false `
+        -SettingsPaths @('old.settings', 'current.settings') `
+        -DisabledSettingsPaths @('old.settings', 'current.settings')
+    Expect-Failure { Assert-InDeSigningPrerequisites $disabledWithoutIdentity } 'disabled'
+    $missingPersistent = New-SigningState -PersistentIdentity $false
+    Expect-Failure { Assert-InDeSigningPrerequisites $missingPersistent } 'No persistent local signing identity'
+
+    $installerTokens = $null
+    $installerErrors = $null
+    $installerAst = [Management.Automation.Language.Parser]::ParseFile(
+        (Join-Path $repository 'install-local.ps1'), [ref]$installerTokens, [ref]$installerErrors)
+    if ($installerErrors.Count -gt 0) { throw ($installerErrors | Out-String) }
+    $installerCommands = @($installerAst.FindAll({
+        param($node)
+        $node -is [Management.Automation.Language.CommandAst]
+    }, $true))
+    $prerequisiteCommand = $installerCommands |
+        Where-Object { $_.GetCommandName() -eq 'Assert-InDeSigningPrerequisites' } |
+        Select-Object -First 1
+    $signingCommand = $installerCommands |
+        Where-Object { $_.GetCommandName() -eq 'Start-Process' } |
+        Select-Object -First 1
+    if ($null -eq $prerequisiteCommand) { throw 'install-local.ps1 does not check signing prerequisites.' }
+    if ($null -eq $signingCommand) { throw 'install-local.ps1 does not start PixInsight signing.' }
+    if ($prerequisiteCommand.Extent.StartOffset -ge $signingCommand.Extent.StartOffset) {
+        throw 'install-local.ps1 must check signing prerequisites before starting PixInsight.'
+    }
+    $continueCommand = $installerCommands |
+        Where-Object { $_.GetCommandName() -eq 'Write-Warning' } |
+        Where-Object { $_.Extent.Text -like '*valid signature before exiting*' } |
+        Select-Object -First 1
+    if ($null -eq $continueCommand) { throw 'install-local.ps1 does not handle post-signing crashes.' }
+    $guard = $continueCommand.Parent
+    while ($null -ne $guard -and $guard.Extent.Text -notlike '*$signingCrashed*') {
+        $guard = $guard.Parent
+    }
+    if ($null -eq $guard) {
+        throw 'install-local.ps1 must continue after a signature only for a recognized PixInsight crash.'
+    }
 
     Write-Host "Installer smoke tests passed (PowerShell $($PSVersionTable.PSVersion))."
 }

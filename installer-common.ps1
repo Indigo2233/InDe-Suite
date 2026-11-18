@@ -123,36 +123,46 @@ function Get-InDePixInsightSigningState {
     $state = [pscustomobject]@{
         SettingsDirectory = $pleiades
         SettingsPath = ''
+        SettingsPaths = @()
         SettingsFound = $false
         LicenseFound = $false
         PersistentIdentity = $false
         LocalSigningIdentityEnabled = $true
+        DisabledSettingsPaths = @()
+        PersistentSettingsPaths = @()
     }
     if (-not (Test-Path -LiteralPath $pleiades -PathType Container)) {
         return $state
     }
     $settings = @(Get-ChildItem -LiteralPath $pleiades -Filter 'core-*-pxi.settings' -File -ErrorAction SilentlyContinue |
-        Sort-Object -Property Name)
+        Sort-Object -Property LastWriteTime, Name -Descending)
     if ($settings.Count -gt 0) {
-        $state.SettingsPath = $settings[0].FullName
+        $state.SettingsPaths = @($settings | ForEach-Object { $_.FullName })
+        $state.SettingsPath = $state.SettingsPaths[0]
         $state.SettingsFound = $true
     }
     $state.LicenseFound = Test-Path -LiteralPath (Join-Path $pleiades 'PixInsightLicense') -PathType Leaf
     if (-not $state.SettingsFound) {
         return $state
     }
-    try {
-        $settingsText = [IO.File]::ReadAllText($state.SettingsPath)
+    foreach ($settingsPath in $state.SettingsPaths) {
+        try {
+            $settingsText = [IO.File]::ReadAllText($settingsPath)
+        }
+        catch {
+            continue
+        }
+        $publicKeyMatch = [regex]::Match($settingsText, '(?s)LocalSigningIdentity.{0,400}?PublicKey" t="s">([^<]*)')
+        if ($publicKeyMatch.Success -and -not [string]::IsNullOrWhiteSpace($publicKeyMatch.Groups[1].Value)) {
+            $state.PersistentIdentity = $true
+            $state.PersistentSettingsPaths += $settingsPath
+        }
+        $enabledMatch = [regex]::Match($settingsText, 'EnableLocalSigningIdentity" t="b" v="([^"]*)"')
+        if ($enabledMatch.Success -and $enabledMatch.Groups[1].Value -eq 'false') {
+            $state.DisabledSettingsPaths += $settingsPath
+        }
     }
-    catch {
-        return $state
-    }
-    $publicKeyMatch = [regex]::Match($settingsText, '(?s)LocalSigningIdentity.{0,400}?PublicKey" t="s">([^<]*)')
-    if ($publicKeyMatch.Success -and -not [string]::IsNullOrWhiteSpace($publicKeyMatch.Groups[1].Value)) {
-        $state.PersistentIdentity = $true
-    }
-    $enabledMatch = [regex]::Match($settingsText, 'EnableLocalSigningIdentity" t="b" v="([^"]*)"')
-    if ($enabledMatch.Success -and $enabledMatch.Groups[1].Value -eq 'false') {
+    if ($state.DisabledSettingsPaths.Count -eq $state.SettingsPaths.Count) {
         $state.LocalSigningIdentityEnabled = $false
     }
     return $state
@@ -201,6 +211,84 @@ function Test-InDeSigningKeysDocument {
     }
     $result.Valid = $true
     return $result
+}
+
+function Assert-InDeSigningPrerequisites {
+    param([object]$State)
+    if (-not $State.LicenseFound) {
+        throw 'PixInsight license data was not found in %APPDATA%\Pleiades. Activate a PixInsight license before installing InDe.'
+    }
+    if (-not $State.LocalSigningIdentityEnabled) {
+        throw 'PixInsight has the local signing identity disabled. Enable it in Process > Preferences > Security and run setup again.'
+    }
+    if (-not $State.PersistentIdentity) {
+        throw 'No persistent local signing identity was detected. Register the selected .xssk in PixInsight > Edit > Local Signing Identity, enable "Make the local signing identity persistent", and exit PixInsight before running setup again.'
+    }
+}
+
+function Test-InDeSignatureDocument {
+    # Validates the generated XSGN without executing or loading the module.
+    param([string]$Path)
+    $result = [pscustomobject]@{
+        Valid = $false
+        Reason = ''
+        DeveloperId = ''
+        CreationTime = ''
+    }
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        $result.Reason = 'The signature file was not created.'
+        return $result
+    }
+    try {
+        $readerSettings = New-Object System.Xml.XmlReaderSettings
+        $readerSettings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
+        $readerSettings.XmlResolver = $null
+        $reader = [System.Xml.XmlReader]::Create($Path, $readerSettings)
+        try {
+            $document = New-Object System.Xml.XmlDocument
+            $document.Load($reader)
+        }
+        finally {
+            $reader.Dispose()
+        }
+        $root = $document.DocumentElement
+        if ($null -eq $root -or $root.LocalName -ne 'xsgn') {
+            $result.Reason = 'The signature root element is not xsgn.'
+            return $result
+        }
+        $signatures = @($root.SelectNodes("*[local-name()='Signature']"))
+        if ($signatures.Count -ne 1) {
+            $result.Reason = 'The signature must contain exactly one Signature element.'
+            return $result
+        }
+        $signature = $signatures[0]
+        $developerId = $signature.GetAttribute('developerId')
+        if ([string]::IsNullOrWhiteSpace($developerId)) {
+            $result.Reason = 'The signature has no developerId.'
+            return $result
+        }
+        $codeSignature = $signature.SelectSingleNode("*[local-name()='CodeSignature']")
+        if ($null -eq $codeSignature -or [string]::IsNullOrWhiteSpace($codeSignature.InnerText)) {
+            $result.Reason = 'The signature has no CodeSignature value.'
+            return $result
+        }
+        try {
+            [void][Convert]::FromBase64String($codeSignature.InnerText.Trim())
+        }
+        catch {
+            $result.Reason = 'The signature CodeSignature value is not valid Base64.'
+            return $result
+        }
+        $creationTime = $root.SelectSingleNode("*[local-name()='CreationTime']")
+        $result.DeveloperId = $developerId
+        $result.CreationTime = if ($null -eq $creationTime) { '' } else { $creationTime.InnerText.Trim() }
+        $result.Valid = $true
+        return $result
+    }
+    catch {
+        $result.Reason = 'The signature document could not be parsed: ' + $_.Exception.Message
+        return $result
+    }
 }
 
 function Find-InDePixInsightFatalErrorWindow {

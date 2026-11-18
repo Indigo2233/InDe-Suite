@@ -77,15 +77,7 @@ try {
     Copy-Item -LiteralPath $sourceDll -Destination $stageDll -Force
 
     $signingState = Get-InDePixInsightSigningState
-    if (-not $signingState.LicenseFound) {
-        throw 'PixInsight license data was not found in %APPDATA%\Pleiades. Activate a PixInsight license before installing InDe.'
-    }
-    if (-not $signingState.LocalSigningIdentityEnabled) {
-        throw 'PixInsight has the local signing identity disabled. Enable it in Process > Preferences > Security and run setup again.'
-    }
-    if (-not $signingState.PersistentIdentity) {
-        Write-Warning 'No persistent local signing identity was detected. Register your .xssk in PixInsight > Edit > Local Signing Identity and enable "Make the local signing identity persistent".'
-    }
+    Assert-InDeSigningPrerequisites $signingState
 
     Write-Host 'PixInsight will request the Local Signing Identity password.'
     Write-Host 'Enter the password in the PixInsight dialog. The installer does not read or store it.'
@@ -112,6 +104,7 @@ try {
     $signingProcess.WaitForExit()
     $signingExitCode = $signingProcess.ExitCode
     if ($null -eq $signingExitCode) { $signingExitCode = -1 }
+    $signingCrashed = ($signingExitCode -eq -1073740791) -or ($signingExitCode -eq -1073741819)
     $signingLogText = ''
     foreach ($logPath in @($signingOutLog, $signingErrLog)) {
         if (-not (Test-Path -LiteralPath $logPath -PathType Leaf)) { continue }
@@ -125,6 +118,7 @@ try {
         }
         if ([string]::IsNullOrWhiteSpace($signingLogText)) { $signingLogText = '' }
     }
+    $signatureDocument = Test-InDeSignatureDocument $stageSignature
     if ($signingExitCode -ne 0) {
         $logCopy = Copy-InDeDiagnosticLog $signingErrLog 'signing'
         if (-not $logCopy) { $logCopy = Copy-InDeDiagnosticLog $signingOutLog 'signing' }
@@ -132,8 +126,7 @@ try {
         if (-not [string]::IsNullOrWhiteSpace($signingLogText)) {
             $detail = ($signingLogText -split '\r?\n' | Where-Object { $_.Trim() } | Select-Object -First 4) -join ' '
         }
-        $crashed = ($signingExitCode -eq -1073740791) -or ($signingExitCode -eq -1073741819)
-        $summary = if ($crashed) {
+        $summary = if ($signingCrashed) {
             "PixInsight crashed while signing the module (exit code $signingExitCode)."
         }
         elseif ($fatalWindow -ne [IntPtr]::Zero) {
@@ -146,14 +139,18 @@ try {
             "PixInsight signing failed with exit code $signingExitCode."
         }
         if ([string]::IsNullOrWhiteSpace($detail)) { $detail = 'PixInsight produced no diagnostic output.' }
-        throw ("$summary $detail" +
-            "`nRegister a persistent local signing identity in PixInsight > Edit > Local Signing Identity, verify the .xssk password, and retry." +
-            $(if ($logCopy) { "`nDiagnostic log: $logCopy" } else { '' }))
+        if (-not $signingCrashed -or -not $signatureDocument.Valid) {
+            throw ("$summary $detail" +
+                "`nVerify the persistent local signing identity and .xssk password in PixInsight, then retry." +
+                $(if ($logCopy) { "`nDiagnostic log: $logCopy" } else { '' }))
+        }
+        Write-Warning ("$summary $detail PixInsight produced a valid signature before exiting, so installation will continue." +
+            $(if ($logCopy) { " Diagnostic log: $logCopy" } else { '' }))
     }
-    if (-not (Test-Path -LiteralPath $stageSignature -PathType Leaf)) {
+    if (-not $signatureDocument.Valid) {
         $logCopy = Copy-InDeDiagnosticLog $signingErrLog 'signing'
         if (-not $logCopy) { $logCopy = Copy-InDeDiagnosticLog $signingOutLog 'signing' }
-        throw ("PixInsight did not generate InDe-pxm.xsgn." +
+        throw ("PixInsight did not generate a valid InDe-pxm.xsgn. $($signatureDocument.Reason)" +
             $(if ($logCopy) { "`nDiagnostic log: $logCopy" } else { '' }))
     }
 
@@ -161,12 +158,6 @@ try {
     $stageHash = (Get-FileHash -LiteralPath $stageDll -Algorithm SHA256).Hash
     if ($sourceHash -ne $stageHash) {
         throw 'The staged module differs from the release module.'
-    }
-
-    $signatureText = Get-Content -LiteralPath $stageSignature -Raw
-    $signatureMatch = [regex]::Match($signatureText, '<Signature\s+version="[^"]+"\s+developerId="([^"]+)">')
-    if (-not $signatureMatch.Success) {
-        throw 'The generated PixInsight signature has an unrecognized format.'
     }
 
     # A user may have started PixInsight while the signing dialog was open.
@@ -194,7 +185,7 @@ try {
 
     Write-Host "Installed module: $(Join-Path $Destination 'InDe-pxm.dll')"
     Write-Host "Installed signature: $(Join-Path $Destination 'InDe-pxm.xsgn')"
-    Write-Host "Local developer ID: $($signatureMatch.Groups[1].Value)"
+    Write-Host "Local developer ID: $($signatureDocument.DeveloperId)"
     Write-Host "SHA-256: $sourceHash"
     Write-Host ''
     Write-Host 'Next step:'

@@ -117,6 +117,10 @@ if ((Get-FileHash -LiteralPath $name -Algorithm SHA256).Hash -ine $expected) { t
 .\install-local.ps1 -KeysFile "$env:USERPROFILE\PixInsightKeys\local.xssk"
 ```
 
+命令行安装会先检查 PixInsight 许可证、安全设置中的本地签名开关和持久本地身份。
+持久身份缺失时，脚本会在打开密码窗口前退出。请先完成 `Edit > Local Signing Identity...`
+的注册，再重新运行安装器。
+
 自定义位置示例：
 
 ```powershell
@@ -187,6 +191,10 @@ Windows 可能只显示「PixInsight Core 已停止工作」的崩溃对话框�
 出现崩溃对话框时，请先查看安装窗口中的诊断信息。确认密码无误后重新运行安装向导即可。
 向导在开始签名前会检查三件事：PixInsight 许可证是否存在、本地签名身份是否被禁用、
 是否已注册持久本地签名身份。任一项不满足时，向导会直接给出对应提示。
+
+如果 PixInsight 在生成 `.xsgn` 后以 `0xc0000409` 退出，且签名文件包含有效的
+`Signature` 和 Base64 `CodeSignature`，安装器会保留崩溃诊断并继续安装。此时安装器
+不会把进程退出阶段的崩溃误判为签名失败。
 
 ## Manage Repositories
 
